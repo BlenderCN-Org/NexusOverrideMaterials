@@ -24,22 +24,23 @@ from bpy.types import (Operator,
 											 UIList)
 
 #-------------------------------------------------------------------
-#		Functions
+#	Functions
 #-------------------------------------------------------------------
 
 def OverrideMaterials(ctx):
 
 	for ob in ctx.selected_objects:
 		if ob.type == 'MESH':
-			RememberMaterials(ob, ob.material_slots, ctx)
+			RememberAndOverrideMaterials(ob, ob.material_slots, ctx)
 
 
 
-def RememberMaterials(currentObject, slots_original, ctx):
+def RememberAndOverrideMaterials(currentObject, slots_original, ctx):
 	currentObject.NOM_RecoverMaterials.clear()
 	for slot in slots_original:
 		currentMat = currentObject.NOM_RecoverMaterials.add()
-		currentMat.material = slot.material.name
+		currentMat.material = slot.material.name #by mat name
+		#currentMat.material = slot.material #by mat
 		
 		if not slot.material.NOM_isExclude:
 			slot.material = ctx.scene.NOM_Material
@@ -50,13 +51,14 @@ def RecoverMaterials(ctx):
 		if ob.type == 'MESH':
 			i = 0
 			for slot in ob.material_slots:
-				slot.material = bpy.data.materials[ob.NOM_RecoverMaterials[i].material]
+				slot.material = bpy.data.materials[ob.NOM_RecoverMaterials[i].material] #by mat name
+				#slot.material = ob.NOM_RecoverMaterials[i].material #by mat
 				i += 1
 
 
 
 #-------------------------------------------------------------------
-#		Operators
+#	Operators
 #-------------------------------------------------------------------
 
 class NOM_OT_ExcludeMat(bpy.types.Operator):
@@ -109,7 +111,7 @@ class NOM_OT_RecoverMat(bpy.types.Operator):
 
 
 #-------------------------------------------------------------------
-#		Drawing
+#	Drawing
 #-------------------------------------------------------------------
 
 class NOM_UL_items(UIList):
@@ -164,11 +166,11 @@ class NOM_PT_objectList(Panel):
 
 
 #-------------------------------------------------------------------
-#		Collection
+#	Collection
 #-------------------------------------------------------------------
 
 class NOM_PG_RecoverMaterials(PropertyGroup):
-	material : StringProperty(
+	material : StringProperty(#PointerProperty
 		name='Materials',
 		description='Recover materials',
 		default=''
@@ -176,7 +178,7 @@ class NOM_PG_RecoverMaterials(PropertyGroup):
 	)
 
 #-------------------------------------------------------------------
-#		Register & Unregister
+#	Register & Unregister
 #-------------------------------------------------------------------
 
 classes = (
@@ -206,6 +208,7 @@ def unregister():
 	for cls in reversed(classes):
 		unregister_class(cls)
 
+	# del custom scene properties
 	del bpy.types.Scene.NOM_Material
 	del bpy.types.Scene.custom_index
 	del bpy.types.Scene.NOM_isOverrided
