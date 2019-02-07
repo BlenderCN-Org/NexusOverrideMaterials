@@ -4,7 +4,7 @@ bl_info = {
 	"version": (0, 1, 0),
 	"blender": (2, 80, 0),
 	"location": "Properties > View Layers",
-	"description": "Tools",
+	"description": "Tools for fast override materials in selected objects (MESH)",
 	"warning": "",
 	"wiki_url": "https://github.com/Hichigo/NexusOverrideMaterials",
 	"category": "Material"
