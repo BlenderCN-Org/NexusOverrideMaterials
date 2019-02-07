@@ -23,55 +23,94 @@ from bpy.types import (Operator,
 											 PropertyGroup,
 											 UIList)
 
-# -------------------------------------------------------------------
-#   Functions
-# -------------------------------------------------------------------
+#-------------------------------------------------------------------
+#		Functions
+#-------------------------------------------------------------------
 
-def CheckExistIndex(indexMat):
-	i = 0
+def OverrideMaterials(ctx):
 
-	for idx in bpy.context.scene.exludeIndexes:
-		if idx.arrayIndex == indexMat:
-			return True, i
-
-		i += 1
-
-	return False, -1
+	for ob in ctx.selected_objects:
+		if ob.type == 'MESH':
+			RememberMaterials(ob, ob.material_slots, ctx)
 
 
-# -------------------------------------------------------------------
-#   Operators
-# -------------------------------------------------------------------
+
+def RememberMaterials(currentObject, slots_original, ctx):
+	currentObject.NOM_RecoverMaterials.clear()
+	for slot in slots_original:
+		currentMat = currentObject.NOM_RecoverMaterials.add()
+		currentMat.material = slot.material.name
+		
+		if not slot.material.NOM_isExclude:
+			slot.material = ctx.scene.NOM_Material
+
+
+def RecoverMaterials(ctx):
+	for ob in ctx.selected_objects:
+		if ob.type == 'MESH':
+			i = 0
+			for slot in ob.material_slots:
+				slot.material = bpy.data.materials[ob.NOM_RecoverMaterials[i].material]
+				i += 1
+
+
+
+#-------------------------------------------------------------------
+#		Operators
+#-------------------------------------------------------------------
 
 class NOM_OT_ExcludeMat(bpy.types.Operator):
 
 	bl_idname = "exclude.material"
 	bl_label = "Exclude material"
 
-	index = bpy.props.IntProperty(
+	index : bpy.props.IntProperty(
 		name="Index material",
 		description="Index material",
 		default=-1
 	)
 
 	def execute(self, context):
-		print(bpy.data.materials[self.index])
+		bpy.data.materials[self.index].NOM_isExclude = not bpy.data.materials[self.index].NOM_isExclude
 
-		remove, removeIdx = CheckExistIndex(self.index)
-		if remove:
-			bpy.context.scene.exludeIndexes.remove(removeIdx)
-			print('remove', removeIdx)
-		else:
-			new_item = bpy.context.scene.exludeIndexes.add()
-			new_item.arrayIndex = self.index
-			print('add', self.index)
+		return {'FINISHED'}
+
+class NOM_OT_OverrideMat(bpy.types.Operator):
+
+	bl_idname = "override.materials"
+	bl_label = "Override materials"
+
+	def execute(self, context):
+		scn = context.scene
+
+		scn.NOM_isOverrided = True
+
+		OverrideMaterials(context)
+
+		self.report({'INFO'}, 'OVERRIDE WORKING!')
+
+		return {'FINISHED'}
+
+class NOM_OT_RecoverMat(bpy.types.Operator):
+
+	bl_idname = "recover.materials"
+	bl_label = "Recover materials"
+
+	def execute(self, context):
+		scn = context.scene
+
+		scn.NOM_isOverrided = False
+
+		RecoverMaterials(context)
+
+		self.report({'INFO'}, 'RECOVER WORKING!')
 
 		return {'FINISHED'}
 
 
-# -------------------------------------------------------------------
-#   Drawing
-# -------------------------------------------------------------------
+#-------------------------------------------------------------------
+#		Drawing
+#-------------------------------------------------------------------
 
 class NOM_UL_items(UIList):
 	def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
@@ -80,12 +119,12 @@ class NOM_UL_items(UIList):
 		if self.layout_type in {'DEFAULT', 'COMPACT'}:
 			row = layout.row(align=True)
 			row.prop(mat, "name", text="", emboss=False, icon_value=layout.icon(mat))
-			
-			remove, removeIdx = CheckExistIndex(index)
-			if remove:
+
+			if mat.NOM_isExclude:
 				iconName = 'CANCEL'
 			else:
 				iconName = 'FILE_TICK'
+
 			row.operator("exclude.material", icon=iconName, text="").index = index
 
 	def invoke(self, context, event):
@@ -101,34 +140,52 @@ class NOM_PT_objectList(Panel):
 
 	def draw(self, context):
 		layout = self.layout
-		scn = bpy.context.scene
+		scn = context.scene
 		data = bpy.data
 
-		rows = 2
-		row = layout.row(align=True)
-		row.template_list("NOM_UL_items", "custom_def_list", data, "materials", scn, "custom_index", rows=4)
+		if not scn.NOM_isOverrided:
+			col = layout.column()
+			# split = layout.split()
+
+			# col = split.column()
+			col.prop_search(scn, "NOM_Material", bpy.data, "materials", icon='MATERIAL_DATA')
+
+			box = layout.box()
+			box.label(text='Exclude materials')
+			box.template_list("NOM_UL_items", "custom_def_list", data, "materials", scn, "custom_index", rows=4)
+
+			col = layout.column(align=True)
+			col.operator("override.materials", icon="OVERLAY", text="Override materials")
+		else:
+			col = layout.column(align=True)
+			col.operator("recover.materials", icon="DECORATE_OVERRIDE", text="Recover materials")
 
 
-# -------------------------------------------------------------------
-#   Collection
-# -------------------------------------------------------------------
 
-class NOM_PG_IndexMatsArray(PropertyGroup):
-	#name = StringProperty() -> Instantiated by default
-	arrayIndex = IntProperty(
-		name="Index material list",
-		default=-1
+
+#-------------------------------------------------------------------
+#		Collection
+#-------------------------------------------------------------------
+
+class NOM_PG_RecoverMaterials(PropertyGroup):
+	material : StringProperty(
+		name='Materials',
+		description='Recover materials',
+		default=''
+		# type=bpy.types.Material
 	)
 
-# -------------------------------------------------------------------
-#   Register & Unregister
-# -------------------------------------------------------------------
+#-------------------------------------------------------------------
+#		Register & Unregister
+#-------------------------------------------------------------------
 
 classes = (
 	NOM_OT_ExcludeMat,
+	NOM_OT_OverrideMat,
+	NOM_OT_RecoverMat,
 	NOM_UL_items,
 	NOM_PT_objectList,
-	NOM_PG_IndexMatsArray
+	NOM_PG_RecoverMaterials
 )
 
 def register():
@@ -137,8 +194,11 @@ def register():
 		register_class(cls)
 
 	# Custom scene properties
-	bpy.types.Scene.exludeIndexes = CollectionProperty(type=NOM_PG_IndexMatsArray)
+	bpy.types.Scene.NOM_Material = PointerProperty(name='Material override', description='Material to override', type=bpy.types.Material)
 	bpy.types.Scene.custom_index = IntProperty()
+	bpy.types.Scene.NOM_isOverrided = BoolProperty(default=False)
+	bpy.types.Object.NOM_RecoverMaterials = CollectionProperty(type=NOM_PG_RecoverMaterials)
+	bpy.types.Material.NOM_isExclude = BoolProperty(default=False)
 
 
 def unregister():
@@ -146,8 +206,11 @@ def unregister():
 	for cls in reversed(classes):
 		unregister_class(cls)
 
-	del bpy.types.Scene.exludeIndexes
+	del bpy.types.Scene.NOM_Material
 	del bpy.types.Scene.custom_index
+	del bpy.types.Scene.NOM_isOverrided
+	del bpy.types.Object.NOM_RecoverMaterials
+	del bpy.types.Material.NOM_isExclude
 
 
 if __name__ == "__main__":
