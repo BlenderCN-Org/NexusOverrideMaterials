@@ -78,7 +78,7 @@ class NOM_UL_items(UIList):
 		mat = item
 
 		if self.layout_type in {'DEFAULT', 'COMPACT'}:
-			row = layout.row(True)
+			row = layout.row(align=True)
 			row.prop(mat, "name", text="", emboss=False, icon_value=layout.icon(mat))
 			
 			remove, removeIdx = CheckExistIndex(index)
@@ -95,7 +95,8 @@ class NOM_PT_objectList(Panel):
 	"""Adds a custom panel to the TEXT_EDITOR"""
 	bl_idname = 'NOM_PT_ListMaterials'
 	bl_space_type = "PROPERTIES"
-	bl_region_type = "VIEW_LAYERS"
+	bl_region_type = 'WINDOW'
+	bl_context = "view_layer"
 	bl_label = "Nexus Override Materials"
 
 	def draw(self, context):
@@ -104,7 +105,7 @@ class NOM_PT_objectList(Panel):
 		data = bpy.data
 
 		rows = 2
-		row = layout.row()
+		row = layout.row(align=True)
 		row.template_list("NOM_UL_items", "custom_def_list", data, "materials", scn, "custom_index", rows=4)
 
 
