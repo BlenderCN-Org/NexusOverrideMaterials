@@ -13,15 +13,15 @@ bl_info = {
 import bpy
 
 from bpy.props import (IntProperty,
-											 BoolProperty,
-											 StringProperty,
-											 CollectionProperty,
-											 PointerProperty)
+						BoolProperty,
+						StringProperty,
+						CollectionProperty,
+						PointerProperty)
 
 from bpy.types import (Operator,
-											 Panel,
-											 PropertyGroup,
-											 UIList)
+						Panel,
+						PropertyGroup,
+						UIList)
 
 #-------------------------------------------------------------------
 #	Functions
@@ -208,7 +208,7 @@ def unregister():
 	for cls in reversed(classes):
 		unregister_class(cls)
 
-	# del custom scene properties
+	# delete custom scene properties
 	del bpy.types.Scene.NOM_Material
 	del bpy.types.Scene.custom_index
 	del bpy.types.Scene.NOM_isOverrided
